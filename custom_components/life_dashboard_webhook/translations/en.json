@@ -1,0 +1,34 @@
+{
+  "title": "Life Dashboard Webhook",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add an Android device",
+        "description": "This creates one dedicated webhook for this phone. Configure both Health Connect and Screen Time in Life Dashboard Companion to send to the same webhook URL. Add the integration again for each additional phone.",
+        "data": {
+          "device_name": "Phone name",
+          "hmac_secret": "HMAC signing secret (optional)"
+        }
+      },
+      "confirm": {
+        "title": "Configure Life Dashboard Companion",
+        "description": "Use this URL for both the Health Connect and Screen Time webhooks on this phone:\n\n`{webhook_url}`\n\nIf you entered an HMAC secret, configure the same signing secret in the app. Submit this step when you have copied the URL."
+      }
+    },
+    "abort": {
+      "missing_setup_data": "The setup data was lost. Start the integration setup again."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Life Dashboard webhook settings",
+        "description": "Current webhook URL:\n\n`{webhook_url}`\n\nUse this URL for both Health Connect and Screen Time on this phone.",
+        "data": {
+          "device_name": "Phone name",
+          "hmac_secret": "HMAC signing secret (optional)"
+        }
+      }
+    }
+  }
+}
