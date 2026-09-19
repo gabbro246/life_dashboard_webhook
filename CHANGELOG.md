@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.3
+
+- Individual app sensors now start disabled, while the main screen-time summaries stay enabled.
+- App names are clearer, duplicate names are distinguished, and package names are included.
+
 ## 0.2.2
 
 - Added clear version numbers and release notes to HACS updates.

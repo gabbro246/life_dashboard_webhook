@@ -15,8 +15,9 @@ phone. Their sensors include daily activity, body measurements, sleep,
 exercise, nutrition, phone usage, and individual app usage when that data is
 available.
 
-Sensors without data are disabled by default, so the device pages stay tidy.
-You can enable any additional sensor from its entity settings.
+Only the main screen-time summaries are enabled by default. Individual app
+sensors and sensors without data stay disabled until you enable the ones you
+care about from their entity settings.
 
 ## Install with HACS
 

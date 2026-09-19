@@ -41,18 +41,18 @@ async def async_setup_entry(
     ]
 
     added_apps: set[str] = set()
-    for package, name in sorted(runtime.known_apps.items()):
-        entities.append(LifeDashboardAppSensor(entry, runtime, package, name))
+    for package in sorted(runtime.known_apps):
+        entities.append(LifeDashboardAppSensor(entry, runtime, package))
         added_apps.add(package)
 
     async_add_entities(entities)
 
     @callback
-    def _add_app(package: str, name: str) -> None:
+    def _add_app(package: str, _name: str) -> None:
         if package in added_apps:
             return
         added_apps.add(package)
-        async_add_entities([LifeDashboardAppSensor(entry, runtime, package, name)])
+        async_add_entities([LifeDashboardAppSensor(entry, runtime, package)])
 
     entry.async_on_unload(runtime.add_app_listener(_add_app))
 
@@ -82,8 +82,10 @@ class LifeDashboardSensor(SensorEntity):
         self._attr_entity_category = definition.entity_category
         self._attr_suggested_display_precision = definition.suggested_display_precision
         data = runtime.get_state(definition.key)
-        self._attr_entity_registry_enabled_default = bool(
-            data is not None and data.get("value") is not None
+        self._attr_entity_registry_enabled_default = (
+            definition.enabled_default
+            if definition.enabled_default is not None
+            else bool(data is not None and data.get("value") is not None)
         )
 
     @property
@@ -141,19 +143,24 @@ class LifeDashboardAppSensor(SensorEntity):
     _attr_native_unit_of_measurement = "min"
     _attr_state_class = SensorStateClass.TOTAL
     _attr_icon = "mdi:application"
+    _attr_entity_registry_enabled_default = False
 
     def __init__(
         self,
         entry: ConfigEntry,
         runtime: LifeDashboardRuntime,
         package: str,
-        app_name: str,
     ) -> None:
         self._entry = entry
         self._runtime = runtime
         self._package = package
         self._attr_unique_id = f"{entry.entry_id}:screen_app:{package}"
-        self._attr_name = f"{app_name} screen time today"
+
+    @property
+    def name(self) -> str:
+        """Return a name that stays unique as more apps are discovered."""
+        app_name = self._runtime.get_app_display_name(self._package)
+        return f"{app_name} screen time today"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -175,9 +182,11 @@ class LifeDashboardAppSensor(SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any] | None:
         data = self._runtime.get_state(f"screen_app::{self._package}")
         if not data:
-            return None
+            return {"package": self._package}
         attrs = data.get("attributes")
-        return attrs if isinstance(attrs, dict) else None
+        return {**attrs, "package": self._package} if isinstance(attrs, dict) else {
+            "package": self._package
+        }
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()

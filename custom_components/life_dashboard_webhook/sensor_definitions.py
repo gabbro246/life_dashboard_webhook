@@ -24,6 +24,7 @@ class SensorDefinition:
     timestamp: bool = False
     entity_category: EntityCategory | None = None
     suggested_display_precision: int | None = None
+    enabled_default: bool | None = None
 
 
 def _health(
@@ -59,6 +60,7 @@ def _screen(
     *,
     timestamp: bool = False,
     entity_category: EntityCategory | None = None,
+    enabled_default: bool | None = None,
 ) -> SensorDefinition:
     return SensorDefinition(
         key,
@@ -69,6 +71,8 @@ def _screen(
         state_class,
         timestamp,
         entity_category,
+        None,
+        enabled_default,
     )
 
 
@@ -224,10 +228,38 @@ for field in NUTRITION_FIELDS:
     )
 
 SCREEN_SENSOR_DEFINITIONS: list[SensorDefinition] = [
-    _screen("screen_time_today", "Screen time today", "min", "mdi:cellphone", SensorStateClass.TOTAL),
-    _screen("screen_time_yesterday", "Screen time yesterday", "min", "mdi:cellphone-clock", SensorStateClass.TOTAL),
-    _screen("screen_time_7d", "Screen time last 7 days", "min", "mdi:calendar-week", SensorStateClass.TOTAL),
-    _screen("screen_top_app", "Most used app today", None, "mdi:apps", None),
+    _screen(
+        "screen_time_today",
+        "Screen time today",
+        "min",
+        "mdi:cellphone",
+        SensorStateClass.TOTAL,
+        enabled_default=True,
+    ),
+    _screen(
+        "screen_time_yesterday",
+        "Screen time yesterday",
+        "min",
+        "mdi:cellphone-clock",
+        SensorStateClass.TOTAL,
+        enabled_default=True,
+    ),
+    _screen(
+        "screen_time_7d",
+        "Screen time last 7 days",
+        "min",
+        "mdi:calendar-week",
+        SensorStateClass.TOTAL,
+        enabled_default=True,
+    ),
+    _screen(
+        "screen_top_app",
+        "Most used app today",
+        None,
+        "mdi:apps",
+        None,
+        enabled_default=True,
+    ),
     _screen(
         "screen_last_sync",
         "Last webhook sync",
@@ -236,6 +268,7 @@ SCREEN_SENSOR_DEFINITIONS: list[SensorDefinition] = [
         None,
         timestamp=True,
         entity_category=EntityCategory.DIAGNOSTIC,
+        enabled_default=True,
     ),
     _screen(
         "screen_app_version",
@@ -244,6 +277,7 @@ SCREEN_SENSOR_DEFINITIONS: list[SensorDefinition] = [
         "mdi:application-cog",
         None,
         entity_category=EntityCategory.DIAGNOSTIC,
+        enabled_default=False,
     ),
 ]
 

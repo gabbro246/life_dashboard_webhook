@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
 
 from .const import STORAGE_KEY_PREFIX, STORAGE_VERSION
-from .parser import normalize_health, normalize_screen_time
+from .parser import normalize_health, normalize_screen_time, resolve_app_names
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -128,6 +128,10 @@ class LifeDashboardRuntime:
         """Return normalized data for one sensor."""
         return self.states.get(key)
 
+    def get_app_display_name(self, package: str) -> str:
+        """Return the current, unique display name for an app package."""
+        return resolve_app_names(self.known_apps).get(package, package)
+
     @callback
     def add_state_listener(self, listener: StateListener) -> Callable[[], None]:
         """Subscribe to normalized state changes."""
@@ -172,6 +176,24 @@ class LifeDashboardRuntime:
         for key, incoming in updates.items():
             if _prefer_incoming(self.states.get(key), incoming):
                 self.states[key] = incoming
+
+        if source == "screen_time":
+            display_names = resolve_app_names(self.known_apps)
+            for package, name in display_names.items():
+                state = self.states.get(f"screen_app::{package}")
+                if not state:
+                    continue
+                attrs = state.get("attributes")
+                if not isinstance(attrs, dict):
+                    attrs = {}
+                    state["attributes"] = attrs
+                attrs["package"] = package
+                attrs["app_name"] = name
+            top_app = self.states.get("screen_top_app")
+            if top_app and isinstance(top_app.get("attributes"), dict):
+                top_package = top_app["attributes"].get("package")
+                if isinstance(top_package, str) and top_package in display_names:
+                    top_app["value"] = display_names[top_package]
         await self.async_save()
 
         for package, name in newly_discovered.items():

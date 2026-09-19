@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import datetime
+import re
 from typing import Any
 
 SensorState = dict[str, Any]
@@ -17,6 +18,76 @@ StateUpdates = dict[str, SensorState]
 # known app after it exceeds this amount on any reported day; once known, the
 # runtime keeps it so its entity can continue to report quieter or zero-use days.
 SCREEN_APP_DISCOVERY_THRESHOLD_MINUTES = 10
+
+_GENERIC_APP_NAMES = frozenset({"android", "app"})
+_GENERIC_PACKAGE_PARTS = frozenset(
+    {
+        "android",
+        "app",
+        "apps",
+        "application",
+        "com",
+        "io",
+        "mobile",
+        "net",
+        "org",
+    }
+)
+
+
+def _package_part_label(part: str) -> str:
+    """Turn one package segment into a readable app label."""
+    words = re.sub(r"(?<=[a-z0-9])(?=[A-Z])", " ", part)
+    words = re.sub(r"[_-]+", " ", words).strip()
+    return words.title()
+
+
+def resolve_app_name(package: str, reported_name: str | None) -> str:
+    """Return a useful app name, falling back to its package when necessary."""
+    name = reported_name.strip() if isinstance(reported_name, str) else ""
+    if name and name.casefold() not in _GENERIC_APP_NAMES and name != package:
+        return name
+
+    parts = [part for part in package.split(".") if part]
+    meaningful = [
+        part for part in reversed(parts) if part.casefold() not in _GENERIC_PACKAGE_PARTS
+    ]
+    if meaningful:
+        return _package_part_label(meaningful[0])
+    if parts:
+        return _package_part_label(parts[-1])
+    return name or "Unknown app"
+
+
+def resolve_app_names(apps: dict[str, str]) -> dict[str, str]:
+    """Resolve app names and add the shortest unique package suffix to duplicates."""
+    resolved = {
+        package: resolve_app_name(package, reported_name)
+        for package, reported_name in apps.items()
+    }
+    groups: dict[str, list[str]] = defaultdict(list)
+    for package, name in resolved.items():
+        groups[name.casefold()].append(package)
+
+    for packages in groups.values():
+        if len(packages) < 2:
+            continue
+        split_packages = {package: package.split(".") for package in packages}
+        max_depth = max(len(parts) for parts in split_packages.values())
+        depth = 1
+        while depth < max_depth:
+            suffixes = {
+                ".".join(parts[-depth:]).casefold()
+                for parts in split_packages.values()
+            }
+            if len(suffixes) == len(packages):
+                break
+            depth += 1
+        for package in packages:
+            suffix = ".".join(split_packages[package][-depth:])
+            resolved[package] = f"{resolved[package]} ({suffix})"
+
+    return resolved
 
 
 def _state(value: Any, **attributes: Any) -> SensorState:
@@ -420,7 +491,7 @@ def normalize_screen_time(payload: dict[str, Any]) -> tuple[StateUpdates, dict[s
             if isinstance(minutes, (int, float)):
                 seven_day_by_package[package] += float(minutes)
                 if minutes > SCREEN_APP_DISCOVERY_THRESHOLD_MINUTES:
-                    discovered_apps[package] = name
+                    discovered_apps[package] = resolve_app_name(package, name)
             last_used = app.get("last_used")
             if isinstance(last_used, str) and (
                 package not in last_used_by_package
@@ -437,6 +508,8 @@ def normalize_screen_time(payload: dict[str, Any]) -> tuple[StateUpdates, dict[s
             if isinstance(package, str) and package:
                 current_apps[package] = app
 
+    display_names = resolve_app_names(app_name_by_package)
+
     top_app: dict[str, Any] | None = None
     if current_apps:
         top_app = max(
@@ -446,9 +519,10 @@ def normalize_screen_time(payload: dict[str, Any]) -> tuple[StateUpdates, dict[s
             else 0,
         )
     if top_app:
+        top_package = top_app.get("package")
         updates["screen_top_app"] = _state(
-            top_app.get("name") or top_app.get("package"),
-            package=top_app.get("package"),
+            display_names.get(top_package, top_package),
+            package=top_package,
             minutes=top_app.get("minutes"),
             last_used=top_app.get("last_used"),
             date=latest_day.get("date"),
@@ -457,7 +531,7 @@ def normalize_screen_time(payload: dict[str, Any]) -> tuple[StateUpdates, dict[s
     # Build states for every reported package, including already-known apps that
     # no longer meet the discovery threshold. The runtime decides which new app
     # entities to create, while existing ones can still update to zero minutes.
-    for package, name in app_name_by_package.items():
+    for package, name in display_names.items():
         app = current_apps.get(package, {})
         minutes = app.get("minutes", 0)
         if not isinstance(minutes, (int, float)):
