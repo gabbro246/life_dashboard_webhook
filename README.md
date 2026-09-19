@@ -1,24 +1,58 @@
 # Life Dashboard Webhook
 
-A Home Assistant custom integration that receives health and screen-time data from Life Dashboard Companion and exposes it as sensor entities.
+<p align="center">
+  <img src="custom_components/life_dashboard_webhook/brand/icon.png" alt="Life Dashboard Webhook icon" width="160">
+</p>
+
+Life Dashboard Webhook brings health and screen-time data from
+[Life Dashboard Companion](https://github.com/owen282000/life-dashboard-companion-app)
+into Home Assistant.
+
+## What it does
+
+The integration creates separate Health and Screen Time devices for each
+phone. Their sensors include daily activity, body measurements, sleep,
+exercise, nutrition, phone usage, and individual app usage when that data is
+available.
+
+Sensors without data are disabled by default, so the device pages stay tidy.
+You can enable any additional sensor from its entity settings.
 
 ## Install with HACS
 
-1. Open HACS in Home Assistant.
-2. Open the three-dot menu and select **Custom repositories**.
-3. Add `https://github.com/gabbro246/life_dashboard_webhook` and choose **Integration** as the category.
-4. Open **Life Dashboard Webhook** in HACS and select **Download**.
-5. Restart Home Assistant.
-6. Go to **Settings → Devices & services → Add integration**, search for **Life Dashboard Webhook**, and follow the setup steps.
+[![Open Life Dashboard Webhook in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=gabbro246&repository=life_dashboard_webhook&category=integration)
 
-The setup flow creates a dedicated webhook URL for one phone. Use that URL for both the Health Connect and Screen Time webhooks in Life Dashboard Companion. Add the integration again for each additional phone.
+1. Select the button above from a device where you are signed in to Home
+   Assistant, then confirm the repository in HACS.
+2. In HACS, download **Life Dashboard Webhook**.
+3. Restart Home Assistant.
+4. Go to **Settings → Devices & services**, choose **Add integration**, and
+   search for **Life Dashboard Webhook**.
 
-If you configure an optional HMAC signing secret, use the same secret in Life Dashboard Companion.
+You need [HACS](https://hacs.xyz/) installed first. If the button cannot open
+your Home Assistant, add
+`https://github.com/gabbro246/life_dashboard_webhook` in HACS as an
+**Integration** repository instead.
 
-## Updates
+## Connect a phone
 
-HACS will show new versions on its dashboard. Select **Update** there, then restart Home Assistant when prompted.
+When adding the integration, give the phone a clear name. Home Assistant then
+shows a dedicated webhook URL. Use that same URL for the Health Connect and
+Screen Time webhooks in Life Dashboard Companion.
+
+You can optionally add a signing secret to verify that incoming data came from
+your phone. Enter the same secret in Home Assistant and Life Dashboard
+Companion.
+
+Add the integration again for each additional phone. To change a phone name or
+signing secret later, open **Settings → Devices & services → Life Dashboard
+Webhook**, select the phone, and choose **Configure**.
 
 ## Manual installation
 
-Copy `custom_components/life_dashboard_webhook` into the `custom_components` directory inside your Home Assistant configuration directory, then restart Home Assistant.
+Copy `custom_components/life_dashboard_webhook` into the `custom_components`
+directory in your Home Assistant configuration, then restart Home Assistant.
+
+## License
+
+[MIT](LICENSE)
