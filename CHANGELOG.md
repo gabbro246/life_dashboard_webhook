@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.6
+
+- Fixed detailed history for phones with newer Home Assistant identifiers.
+
 ## 0.2.5
 
 - Fixed detailed history not appearing for some phones.
