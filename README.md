@@ -10,8 +10,10 @@ into Home Assistant.
 
 ## What it does
 
-The integration creates separate Health and Screen Time devices for each
-phone. Their sensors include daily activity, body measurements, sleep,
+The integration creates separate Health and Screen Time devices for each phone.
+You choose Health, Screen Time, or both when connecting a phone and can change
+that selection later. Their sensors include daily activity, body measurements,
+sleep,
 exercise, nutrition, phone usage, and individual app usage when that data is
 available.
 
@@ -50,16 +52,15 @@ your Home Assistant, add
 
 ## Connect a phone
 
-When adding the integration, give the phone a clear name. Home Assistant then
-shows a dedicated webhook URL. Use that same URL for the Health Connect and
-Screen Time webhooks in Life Dashboard Companion.
+When adding the integration, give the phone a clear name and choose Health,
+Screen Time, or both. Home Assistant then shows a dedicated webhook URL. Use that
+same URL for the selected webhooks in Life Dashboard Companion.
 
 You can optionally add a signing secret to verify that incoming data came from
 your phone. Enter the same secret in Home Assistant and Life Dashboard
 Companion.
 
-Add the integration again for each additional phone. To change a phone name or
-signing secret later, open **Settings → Devices & services → Life Dashboard
+Add the integration again for each additional phone. To change a phone name, selected data types, or signing secret later, open **Settings → Devices & services → Life Dashboard
 Webhook**, select the phone, and choose **Configure**.
 
 ## Manual installation

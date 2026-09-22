@@ -14,10 +14,13 @@ from homeassistant.components import webhook
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 
 from .const import (
     CONF_DEVICE_NAME,
+    CONF_HEALTH_ENABLED,
     CONF_HMAC_SECRET,
+    CONF_SCREENTIME_ENABLED,
     CONF_WEBHOOK_ID,
     DEVICE_HEALTH,
     DEVICE_SCREEN_TIME,
@@ -29,6 +32,7 @@ from .const import (
     SOURCE_SCREEN_TIME,
 )
 from .runtime import LifeDashboardRuntime
+from .sensor_definitions import HEALTH_SENSOR_DEFINITIONS, SCREEN_SENSOR_DEFINITIONS
 
 _LOGGER = logging.getLogger(__name__)
 _LEGACY_HISTORY_OPTION = "store_detailed_history"
@@ -38,8 +42,73 @@ def _device_identifier(entry_id: str, group: str) -> tuple[str, str]:
     return (DOMAIN, f"{entry_id}:{group}")
 
 
+def _source_enabled(entry: ConfigEntry, source: str) -> bool:
+    """Return whether the config entry accepts a payload source."""
+    if source in {SOURCE_HEALTH_CONNECT, SOURCE_HEALTHKIT_IOS}:
+        key = CONF_HEALTH_ENABLED
+    elif source == SOURCE_SCREEN_TIME:
+        key = CONF_SCREENTIME_ENABLED
+    else:
+        return False
+    return bool(entry.data.get(key, True))
+
+
+def _remove_legacy_and_disabled_entities(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> None:
+    """Remove replaced entities and entities for deselected data sources."""
+    registry = er.async_get(hass)
+    entry_prefix = f"{entry.entry_id}:"
+    legacy_health_ids = {
+        f"{entry_prefix}{definition.key}" for definition in HEALTH_SENSOR_DEFINITIONS
+    }
+    legacy_screen_ids = {
+        f"{entry_prefix}{definition.key}" for definition in SCREEN_SENSOR_DEFINITIONS
+    }
+    health_enabled = _source_enabled(entry, SOURCE_HEALTH_CONNECT)
+    screentime_enabled = _source_enabled(entry, SOURCE_SCREEN_TIME)
+
+    for entity in er.async_entries_for_config_entry(registry, entry.entry_id):
+        unique_id = entity.unique_id
+        is_legacy = (
+            unique_id in legacy_health_ids
+            or unique_id in legacy_screen_ids
+            or unique_id.startswith(f"{entry_prefix}screen_app:")
+        )
+        is_disabled = (
+            (
+                not health_enabled
+                and unique_id.startswith(f"{entry_prefix}health:")
+            )
+            or (
+                not screentime_enabled
+                and unique_id.startswith(f"{entry_prefix}screentime:")
+            )
+        )
+        if is_legacy or is_disabled:
+            registry.async_remove(entity.entity_id)
+
+
+def _remove_disabled_devices(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Remove device registry entries for deselected data sources."""
+    registry = dr.async_get(hass)
+    for group, enabled in (
+        (DEVICE_HEALTH, _source_enabled(entry, SOURCE_HEALTH_CONNECT)),
+        (DEVICE_SCREEN_TIME, _source_enabled(entry, SOURCE_SCREEN_TIME)),
+    ):
+        if enabled:
+            continue
+        device = registry.async_get_device(
+            identifiers={_device_identifier(entry.entry_id, group)}
+        )
+        if device is not None:
+            registry.async_remove_device(device.id)
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Life Dashboard Webhook from a config entry."""
+    _remove_legacy_and_disabled_entities(hass, entry)
+    _remove_disabled_devices(hass, entry)
     runtime = LifeDashboardRuntime(hass, entry.entry_id)
     await runtime.async_load()
 
@@ -113,6 +182,9 @@ def _build_webhook_handler(entry: ConfigEntry):
             # Android app can verify connectivity without creating bogus entities.
             return web.Response(status=204)
 
+        if not _source_enabled(entry, source):
+            return web.Response(status=204)
+
         runtime: LifeDashboardRuntime = hass.data[DOMAIN][entry.entry_id]
         try:
             await runtime.async_process_payload(payload)
@@ -150,7 +222,7 @@ def _update_device_registry(
         registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={_device_identifier(entry.entry_id, DEVICE_SCREEN_TIME)},
-            name=f"{phone_name} Screen Time",
+            name=f"{phone_name} Screentime",
             manufacturer=MANUFACTURER,
             model=payload.get("device") or "Android Screen Time",
             sw_version=app_version,

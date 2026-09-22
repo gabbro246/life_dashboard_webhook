@@ -220,7 +220,7 @@ HEALTH_SENSOR_DEFINITIONS: list[SensorDefinition] = [
     _health("sexual_activity_time", "Latest sexual activity time", None, "mdi:clock-outline", None, timestamp=True),
     _health(
         "health_last_sync",
-        "Last webhook sync",
+        "Last sync",
         None,
         "mdi:webhook",
         None,
@@ -307,7 +307,7 @@ for field in NUTRITION_FIELDS:
 SCREEN_SENSOR_DEFINITIONS: list[SensorDefinition] = [
     _screen(
         "screen_time_today",
-        "Screen time today",
+        "Today",
         "min",
         "mdi:calendar-today",
         SensorStateClass.TOTAL,
@@ -316,7 +316,7 @@ SCREEN_SENSOR_DEFINITIONS: list[SensorDefinition] = [
     ),
     _screen(
         "screen_time_yesterday",
-        "Screen time yesterday",
+        "Yesterday",
         "min",
         "mdi:calendar-arrow-left",
         SensorStateClass.TOTAL,
@@ -324,7 +324,7 @@ SCREEN_SENSOR_DEFINITIONS: list[SensorDefinition] = [
     ),
     _screen(
         "screen_time_7d",
-        "Screen time last 7 days",
+        "Last 7 days",
         "min",
         "mdi:calendar-week",
         SensorStateClass.TOTAL,
@@ -332,7 +332,7 @@ SCREEN_SENSOR_DEFINITIONS: list[SensorDefinition] = [
     ),
     _screen(
         "screen_top_app",
-        "Most used app today",
+        "Top app today",
         None,
         "mdi:timer-alert-outline",
         None,
@@ -340,7 +340,7 @@ SCREEN_SENSOR_DEFINITIONS: list[SensorDefinition] = [
     ),
     _screen(
         "screen_last_sync",
-        "Last webhook sync",
+        "Last sync",
         None,
         "mdi:webhook",
         None,

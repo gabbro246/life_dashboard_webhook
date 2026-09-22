@@ -13,7 +13,9 @@ from homeassistant.helpers import selector
 
 from .const import (
     CONF_DEVICE_NAME,
+    CONF_HEALTH_ENABLED,
     CONF_HMAC_SECRET,
+    CONF_SCREENTIME_ENABLED,
     CONF_WEBHOOK_ID,
     DOMAIN,
 )
@@ -40,26 +42,29 @@ class LifeDashboardWebhookConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Create a dedicated webhook for one phone."""
         if user_input is not None:
+            health_enabled = bool(user_input[CONF_HEALTH_ENABLED])
+            screentime_enabled = bool(user_input[CONF_SCREENTIME_ENABLED])
+            if not health_enabled and not screentime_enabled:
+                return self.async_show_form(
+                    step_id="user",
+                    data_schema=_setup_schema(user_input),
+                    errors={"base": "select_data_source"},
+                )
+
             webhook_id = webhook.async_generate_id()
             device_name = str(user_input[CONF_DEVICE_NAME]).strip()
             secret = str(user_input.get(CONF_HMAC_SECRET, "")).strip()
             self._pending = {
                 CONF_DEVICE_NAME: device_name,
+                CONF_HEALTH_ENABLED: health_enabled,
                 CONF_WEBHOOK_ID: webhook_id,
                 CONF_HMAC_SECRET: secret,
+                CONF_SCREENTIME_ENABLED: screentime_enabled,
             }
             await self.async_set_unique_id(webhook_id)
             return await self.async_step_confirm()
 
-        schema = vol.Schema(
-            {
-                vol.Required(CONF_DEVICE_NAME, default="Android phone"): selector.TextSelector(),
-                vol.Optional(CONF_HMAC_SECRET, default=""): selector.TextSelector(
-                    selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
-                ),
-            }
-        )
-        return self.async_show_form(step_id="user", data_schema=schema)
+        return self.async_show_form(step_id="user", data_schema=_setup_schema())
 
     async def async_step_confirm(
         self, user_input: dict[str, Any] | None = None
@@ -74,10 +79,17 @@ class LifeDashboardWebhookConfigFlow(ConfigFlow, domain=DOMAIN):
             )
 
         url = _webhook_url(self.hass, self._pending[CONF_WEBHOOK_ID])
+        data_sources = _data_source_label(
+            self._pending[CONF_HEALTH_ENABLED],
+            self._pending[CONF_SCREENTIME_ENABLED],
+        )
         return self.async_show_form(
             step_id="confirm",
             data_schema=vol.Schema({}),
-            description_placeholders={"webhook_url": url},
+            description_placeholders={
+                "data_sources": data_sources,
+                "webhook_url": url,
+            },
         )
 
     @staticmethod
@@ -88,7 +100,7 @@ class LifeDashboardWebhookConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class LifeDashboardWebhookOptionsFlow(OptionsFlow):
-    """Allow viewing the webhook URL and updating the device label/HMAC secret."""
+    """Allow updating the phone, data sources, and signing secret."""
 
     def __init__(self, config_entry: ConfigEntry) -> None:
         self._entry = config_entry
@@ -99,12 +111,31 @@ class LifeDashboardWebhookOptionsFlow(OptionsFlow):
         """Show and edit entry options."""
         current_name = self._entry.data[CONF_DEVICE_NAME]
         current_secret = self._entry.data.get(CONF_HMAC_SECRET, "")
+        current_health = bool(self._entry.data.get(CONF_HEALTH_ENABLED, True))
+        current_screentime = bool(
+            self._entry.data.get(CONF_SCREENTIME_ENABLED, True)
+        )
         if user_input is not None:
+            health_enabled = bool(user_input[CONF_HEALTH_ENABLED])
+            screentime_enabled = bool(user_input[CONF_SCREENTIME_ENABLED])
+            if not health_enabled and not screentime_enabled:
+                return self.async_show_form(
+                    step_id="init",
+                    data_schema=_setup_schema(user_input),
+                    errors={"base": "select_data_source"},
+                    description_placeholders={
+                        "webhook_url": _webhook_url(
+                            self.hass, self._entry.data[CONF_WEBHOOK_ID]
+                        )
+                    },
+                )
             name = str(user_input[CONF_DEVICE_NAME]).strip()
             secret = str(user_input.get(CONF_HMAC_SECRET, "")).strip()
             new_data = dict(self._entry.data)
             new_data[CONF_DEVICE_NAME] = name
             new_data[CONF_HMAC_SECRET] = secret
+            new_data[CONF_HEALTH_ENABLED] = health_enabled
+            new_data[CONF_SCREENTIME_ENABLED] = screentime_enabled
             self.hass.config_entries.async_update_entry(
                 self._entry, data=new_data, title=name
             )
@@ -112,12 +143,12 @@ class LifeDashboardWebhookOptionsFlow(OptionsFlow):
             return self.async_create_entry(title="", data={})
 
         url = _webhook_url(self.hass, self._entry.data[CONF_WEBHOOK_ID])
-        schema = vol.Schema(
+        schema = _setup_schema(
             {
-                vol.Required(CONF_DEVICE_NAME, default=current_name): selector.TextSelector(),
-                vol.Optional(CONF_HMAC_SECRET, default=current_secret): selector.TextSelector(
-                    selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
-                ),
+                CONF_DEVICE_NAME: current_name,
+                CONF_HEALTH_ENABLED: current_health,
+                CONF_HMAC_SECRET: current_secret,
+                CONF_SCREENTIME_ENABLED: current_screentime,
             }
         )
         return self.async_show_form(
@@ -125,3 +156,37 @@ class LifeDashboardWebhookOptionsFlow(OptionsFlow):
             data_schema=schema,
             description_placeholders={"webhook_url": url},
         )
+
+
+def _setup_schema(values: dict[str, Any] | None = None) -> vol.Schema:
+    """Build the setup/options schema with the supplied values as defaults."""
+    values = values or {}
+    return vol.Schema(
+        {
+            vol.Required(
+                CONF_DEVICE_NAME,
+                default=values.get(CONF_DEVICE_NAME, "Android phone"),
+            ): selector.TextSelector(),
+            vol.Required(
+                CONF_HEALTH_ENABLED,
+                default=values.get(CONF_HEALTH_ENABLED, True),
+            ): selector.BooleanSelector(),
+            vol.Required(
+                CONF_SCREENTIME_ENABLED,
+                default=values.get(CONF_SCREENTIME_ENABLED, True),
+            ): selector.BooleanSelector(),
+            vol.Optional(
+                CONF_HMAC_SECRET,
+                default=values.get(CONF_HMAC_SECRET, ""),
+            ): selector.TextSelector(
+                selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+            ),
+        }
+    )
+
+
+def _data_source_label(health_enabled: bool, screentime_enabled: bool) -> str:
+    """Return a readable summary of the selected data sources."""
+    if health_enabled and screentime_enabled:
+        return "Health and Screen time"
+    return "Health" if health_enabled else "Screen time"

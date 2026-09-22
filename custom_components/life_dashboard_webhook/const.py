@@ -6,7 +6,9 @@ DOMAIN = "life_dashboard_webhook"
 PLATFORMS = [Platform.SENSOR]
 
 CONF_DEVICE_NAME = "device_name"
+CONF_HEALTH_ENABLED = "health_enabled"
 CONF_HMAC_SECRET = "hmac_secret"
+CONF_SCREENTIME_ENABLED = "screentime_enabled"
 CONF_WEBHOOK_ID = "webhook_id"
 
 SOURCE_HEALTH_CONNECT = "health_connect"

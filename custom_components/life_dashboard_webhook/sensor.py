@@ -16,6 +16,8 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_DEVICE_NAME,
+    CONF_HEALTH_ENABLED,
+    CONF_SCREENTIME_ENABLED,
     DEVICE_HEALTH,
     DEVICE_SCREEN_TIME,
     DOMAIN,
@@ -134,6 +136,8 @@ async def async_setup_entry(
 ) -> None:
     """Set up static sensors and dynamically discovered app sensors."""
     runtime: LifeDashboardRuntime = hass.data[DOMAIN][entry.entry_id]
+    health_enabled = bool(entry.data.get(CONF_HEALTH_ENABLED, True))
+    screentime_enabled = bool(entry.data.get(CONF_SCREENTIME_ENABLED, True))
     brand_icons = await hass.async_add_executor_job(
         _load_custom_brand_icons, hass.config.path
     )
@@ -141,14 +145,22 @@ async def async_setup_entry(
     entities: list[SensorEntity] = [
         LifeDashboardSensor(entry, runtime, definition)
         for definition in STATIC_SENSOR_DEFINITIONS
+        if (
+            (definition.device_group == DEVICE_HEALTH and health_enabled)
+            or (
+                definition.device_group == DEVICE_SCREEN_TIME
+                and screentime_enabled
+            )
+        )
     ]
 
     added_apps: set[str] = set()
-    for package in sorted(runtime.known_apps):
-        entities.append(
-            LifeDashboardAppSensor(entry, runtime, package, brand_icons)
-        )
-        added_apps.add(package)
+    if screentime_enabled:
+        for package in sorted(runtime.known_apps):
+            entities.append(
+                LifeDashboardAppSensor(entry, runtime, package, brand_icons)
+            )
+            added_apps.add(package)
 
     async_add_entities(entities)
 
@@ -161,7 +173,8 @@ async def async_setup_entry(
             [LifeDashboardAppSensor(entry, runtime, package, brand_icons)]
         )
 
-    entry.async_on_unload(runtime.add_app_listener(_add_app))
+    if screentime_enabled:
+        entry.async_on_unload(runtime.add_app_listener(_add_app))
 
 
 class LifeDashboardSensor(SensorEntity):
@@ -178,7 +191,12 @@ class LifeDashboardSensor(SensorEntity):
         self._entry = entry
         self._runtime = runtime
         self._definition = definition
-        self._attr_unique_id = f"{entry.entry_id}:{definition.key}"
+        group = (
+            "health"
+            if definition.device_group == DEVICE_HEALTH
+            else "screentime"
+        )
+        self._attr_unique_id = f"{entry.entry_id}:{group}:{definition.key}"
         self._attr_name = definition.name
         self._attr_native_unit_of_measurement = definition.unit
         self._attr_icon = definition.icon
@@ -203,7 +221,7 @@ class LifeDashboardSensor(SensorEntity):
             name = f"{phone_name} Health"
             model = "Health Connect"
         else:
-            name = f"{phone_name} Screen Time"
+            name = f"{phone_name} Screentime"
             model = "Android Screen Time"
         return DeviceInfo(
             identifiers={_device_identifier(self._entry.entry_id, self._definition.device_group)},
@@ -269,7 +287,7 @@ class LifeDashboardAppSensor(SensorEntity):
         self._entry = entry
         self._runtime = runtime
         self._package = package
-        self._attr_unique_id = f"{entry.entry_id}:screen_app:{package}"
+        self._attr_unique_id = f"{entry.entry_id}:screentime:app:{package}"
         self._attr_icon = _app_icon(
             package,
             runtime.known_apps.get(package, runtime.get_app_display_name(package)),
@@ -280,7 +298,7 @@ class LifeDashboardAppSensor(SensorEntity):
     def name(self) -> str:
         """Return a name that stays unique as more apps are discovered."""
         app_name = self._runtime.get_app_display_name(self._package)
-        return f"{app_name} screen time today"
+        return f"{app_name} today"
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -288,7 +306,7 @@ class LifeDashboardAppSensor(SensorEntity):
         phone_name = self._entry.data[CONF_DEVICE_NAME]
         return DeviceInfo(
             identifiers={_device_identifier(self._entry.entry_id, DEVICE_SCREEN_TIME)},
-            name=f"{phone_name} Screen Time",
+            name=f"{phone_name} Screentime",
             manufacturer=MANUFACTURER,
             model="Android Screen Time",
         )

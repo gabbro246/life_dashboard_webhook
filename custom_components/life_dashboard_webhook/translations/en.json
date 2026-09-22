@@ -4,16 +4,21 @@
     "step": {
       "user": {
         "title": "Add an Android device",
-        "description": "This creates one dedicated webhook for this phone. Configure both Health Connect and Screen Time in Life Dashboard Companion to send to the same webhook URL. Add the integration again for each additional phone.",
+        "description": "This creates one dedicated webhook for this phone. Choose Health, Screen time, or both. Add the integration again for each additional phone.",
         "data": {
           "device_name": "Phone name",
+          "health_enabled": "Health data",
+          "screentime_enabled": "Screen time data",
           "hmac_secret": "HMAC signing secret (optional)"
         }
       },
       "confirm": {
         "title": "Configure Life Dashboard Companion",
-        "description": "Use this URL for both the Health Connect and Screen Time webhooks on this phone:\n\n`{webhook_url}`\n\nIf you entered an HMAC secret, configure the same signing secret in the app. Submit this step when you have copied the URL."
+        "description": "Use this URL for {data_sources} on this phone:\n\n`{webhook_url}`\n\nIf you entered an HMAC secret, configure the same signing secret in the app. Submit this step when you have copied the URL."
       }
+    },
+    "error": {
+      "select_data_source": "Select Health, Screen time, or both."
     },
     "abort": {
       "missing_setup_data": "The setup data was lost. Start the integration setup again."
@@ -23,12 +28,17 @@
     "step": {
       "init": {
         "title": "Life Dashboard webhook settings",
-        "description": "Current webhook URL:\n\n`{webhook_url}`\n\nUse this URL for both Health Connect and Screen Time on this phone.",
+        "description": "Current webhook URL:\n\n`{webhook_url}`\n\nChoose which data this phone should provide below.",
         "data": {
           "device_name": "Phone name",
+          "health_enabled": "Health data",
+          "screentime_enabled": "Screen time data",
           "hmac_secret": "HMAC signing secret (optional)"
         }
       }
+    },
+    "error": {
+      "select_data_source": "Select Health, Screen time, or both."
     }
   }
 }

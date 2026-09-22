@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0
+
+- Added a choice of Health, Screen Time, or both for each phone, which can be changed later.
+- Simplified entity names, such as `phone_screentime_today` and `phone_health_steps_today`.
+
 ## 0.2.7
 
 - Activity sensors now work directly in Statistics graph cards with hourly or daily periods.
