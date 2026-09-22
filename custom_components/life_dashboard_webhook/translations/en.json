@@ -26,7 +26,8 @@
         "description": "Current webhook URL:\n\n`{webhook_url}`\n\nUse this URL for both Health Connect and Screen Time on this phone.",
         "data": {
           "device_name": "Phone name",
-          "hmac_secret": "HMAC signing secret (optional)"
+          "hmac_secret": "HMAC signing secret (optional)",
+          "store_detailed_history": "Store detailed history"
         }
       }
     }

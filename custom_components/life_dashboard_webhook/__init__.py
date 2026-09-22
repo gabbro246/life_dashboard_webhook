@@ -18,6 +18,7 @@ from homeassistant.helpers import device_registry as dr
 from .const import (
     CONF_DEVICE_NAME,
     CONF_HMAC_SECRET,
+    CONF_STORE_DETAILED_HISTORY,
     CONF_WEBHOOK_ID,
     DEVICE_HEALTH,
     DEVICE_SCREEN_TIME,
@@ -109,7 +110,13 @@ def _build_webhook_handler(entry: ConfigEntry):
 
         runtime: LifeDashboardRuntime = hass.data[DOMAIN][entry.entry_id]
         try:
-            await runtime.async_process_payload(payload)
+            await runtime.async_process_payload(
+                payload,
+                store_detailed_history=entry.options.get(
+                    CONF_STORE_DETAILED_HISTORY, True
+                ),
+                device_name=entry.data[CONF_DEVICE_NAME],
+            )
             _update_device_registry(hass, entry, payload)
         except Exception:  # Return 5xx so Life Dashboard will retry transient failures.
             _LOGGER.exception(

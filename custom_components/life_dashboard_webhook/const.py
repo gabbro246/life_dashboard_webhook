@@ -7,6 +7,7 @@ PLATFORMS = [Platform.SENSOR]
 
 CONF_DEVICE_NAME = "device_name"
 CONF_HMAC_SECRET = "hmac_secret"
+CONF_STORE_DETAILED_HISTORY = "store_detailed_history"
 CONF_WEBHOOK_ID = "webhook_id"
 
 SOURCE_HEALTH_CONNECT = "health_connect"

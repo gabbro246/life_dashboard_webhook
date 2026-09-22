@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
-from typing import Any
+from pathlib import Path
+from typing import Any, Callable
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
@@ -23,6 +25,83 @@ from .runtime import LifeDashboardRuntime
 from .sensor_definitions import SensorDefinition, STATIC_SENSOR_DEFINITIONS
 
 
+APP_ICON_FALLBACK = "mdi:application-outline"
+CUSTOM_BRAND_ICON_FILES = (
+    "www/community/custom-brand-icons/custom-brand-icons.js",
+    "www/custom-brand-icons.js",
+)
+CUSTOM_BRAND_ICON_PATTERN = re.compile(r'^\s*"([^"]+)":\[', re.MULTILINE)
+
+# Android package names whose user-facing names do not always match their PHU icon.
+APP_ICON_ALIASES: dict[str, tuple[str, ...]] = {
+    "com.amazon.mshop.android.shopping": ("amazon",),
+    "com.android.chrome": ("google-chrome", "chrome"),
+    "com.discord": ("discord",),
+    "com.duolingo": ("duolingo",),
+    "com.ebay.mobile": ("ebay",),
+    "com.facebook.katana": ("facebook",),
+    "com.facebook.orca": ("facebook-messenger", "messenger"),
+    "com.google.android.apps.docs": ("google-drive",),
+    "com.google.android.apps.maps": ("google-maps",),
+    "com.google.android.apps.messaging": ("google-messages",),
+    "com.google.android.apps.photos": ("google-photos",),
+    "com.google.android.apps.youtube.music": ("youtube-music",),
+    "com.google.android.calendar": ("google-calendar",),
+    "com.google.android.gm": ("gmail",),
+    "com.google.android.keep": ("google-keep",),
+    "com.google.android.youtube": ("youtube",),
+    "com.instagram.android": ("instagram",),
+    "com.linkedin.android": ("linkedin",),
+    "com.microsoft.office.outlook": ("microsoft-outlook", "outlook"),
+    "com.microsoft.teams": ("microsoft-teams", "teams"),
+    "com.netflix.mediaclient": ("netflix",),
+    "com.paypal.android.p2pmobile": ("paypal",),
+    "com.pinterest": ("pinterest",),
+    "com.reddit.frontpage": ("reddit",),
+    "com.snapchat.android": ("snapchat",),
+    "com.spotify.music": ("spotify",),
+    "com.twitter.android": ("x", "twitter"),
+    "com.ubercab": ("uber",),
+    "com.whatsapp": ("whatsapp",),
+    "com.zhiliaoapp.musically": ("tiktok",),
+    "org.telegram.messenger": ("telegram",),
+    "tv.twitch.android.app": ("twitch",),
+}
+
+
+def _load_custom_brand_icons(config_path: Callable[[str], str]) -> frozenset[str]:
+    """Return the PHU icons found in an installed Custom Brand Icons file."""
+    for relative_path in CUSTOM_BRAND_ICON_FILES:
+        icon_file = Path(config_path(relative_path))
+        if not icon_file.is_file():
+            continue
+        try:
+            contents = icon_file.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        return frozenset(CUSTOM_BRAND_ICON_PATTERN.findall(contents))
+    return frozenset()
+
+
+def _icon_name(value: str) -> str:
+    """Convert an app label into the naming style used by PHU icons."""
+    return re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-")
+
+
+def _app_icon(package: str, app_name: str, brand_icons: frozenset[str]) -> str:
+    """Choose an installed brand icon for an app, with a safe MDI fallback."""
+    app_slug = _icon_name(app_name)
+    candidates = (
+        *APP_ICON_ALIASES.get(package.casefold(), ()),
+        app_slug,
+        app_slug.replace("-", ""),
+    )
+    for candidate in candidates:
+        if candidate and candidate in brand_icons:
+            return f"phu:{candidate}"
+    return APP_ICON_FALLBACK
+
+
 def _device_identifier(entry_id: str, group: str) -> tuple[str, str]:
     return (DOMAIN, f"{entry_id}:{group}")
 
@@ -34,6 +113,9 @@ async def async_setup_entry(
 ) -> None:
     """Set up static sensors and dynamically discovered app sensors."""
     runtime: LifeDashboardRuntime = hass.data[DOMAIN][entry.entry_id]
+    brand_icons = await hass.async_add_executor_job(
+        _load_custom_brand_icons, hass.config.path
+    )
 
     entities: list[SensorEntity] = [
         LifeDashboardSensor(entry, runtime, definition)
@@ -42,7 +124,9 @@ async def async_setup_entry(
 
     added_apps: set[str] = set()
     for package in sorted(runtime.known_apps):
-        entities.append(LifeDashboardAppSensor(entry, runtime, package))
+        entities.append(
+            LifeDashboardAppSensor(entry, runtime, package, brand_icons)
+        )
         added_apps.add(package)
 
     async_add_entities(entities)
@@ -52,7 +136,9 @@ async def async_setup_entry(
         if package in added_apps:
             return
         added_apps.add(package)
-        async_add_entities([LifeDashboardAppSensor(entry, runtime, package)])
+        async_add_entities(
+            [LifeDashboardAppSensor(entry, runtime, package, brand_icons)]
+        )
 
     entry.async_on_unload(runtime.add_app_listener(_add_app))
 
@@ -142,7 +228,6 @@ class LifeDashboardAppSensor(SensorEntity):
     _attr_has_entity_name = True
     _attr_native_unit_of_measurement = "min"
     _attr_state_class = SensorStateClass.TOTAL
-    _attr_icon = "mdi:application"
     _attr_entity_registry_enabled_default = False
 
     def __init__(
@@ -150,11 +235,17 @@ class LifeDashboardAppSensor(SensorEntity):
         entry: ConfigEntry,
         runtime: LifeDashboardRuntime,
         package: str,
+        brand_icons: frozenset[str] = frozenset(),
     ) -> None:
         self._entry = entry
         self._runtime = runtime
         self._package = package
         self._attr_unique_id = f"{entry.entry_id}:screen_app:{package}"
+        self._attr_icon = _app_icon(
+            package,
+            runtime.known_apps.get(package, runtime.get_app_display_name(package)),
+            brand_icons,
+        )
 
     @property
     def name(self) -> str:
