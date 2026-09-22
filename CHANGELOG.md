@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2
+
+- App names now match PHU and Material Design icons automatically.
+
 ## 0.3.1
 
 - Added a choice of Health, ScreenTime, or both for each phone, which can be changed later.

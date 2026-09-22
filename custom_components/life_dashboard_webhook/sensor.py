@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import re
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
+from homeassistant.components.frontend import DATA_EXTRA_MODULE_URL
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -27,51 +30,44 @@ from .runtime import LifeDashboardRuntime
 from .sensor_definitions import SensorDefinition, STATIC_SENSOR_DEFINITIONS
 
 
-APP_ICON_FALLBACK = "mdi:application-outline"
+APP_ICON_FALLBACK = "mdi:application"
 CUSTOM_BRAND_ICON_FILES = (
     "www/community/custom-brand-icons/custom-brand-icons.js",
     "www/custom-brand-icons.js",
 )
 CUSTOM_BRAND_ICON_PATTERN = re.compile(r'^\s*"([^"]+)":\[', re.MULTILINE)
+MDI_ICON_FILE = Path(__file__).with_name("mdi_icon_names.json")
 
-# Android package names whose user-facing names do not always match their PHU icon.
-APP_ICON_ALIASES: dict[str, tuple[str, ...]] = {
-    "com.amazon.mshop.android.shopping": ("amazon-logo",),
-    "com.brave.browser": ("brave",),
-    "com.android.chrome": ("google-chrome", "chrome"),
-    "com.discord": ("discord",),
-    "com.duolingo": ("duolingo",),
-    "com.ebay.mobile": ("ebay",),
-    "com.facebook.katana": ("facebook",),
-    "com.facebook.orca": ("facebook-messenger", "messenger"),
-    "com.google.android.apps.docs": ("google-drive",),
-    "com.google.android.apps.maps": ("google-maps",),
-    "com.google.android.apps.messaging": ("google-messages",),
-    "com.google.android.apps.photos": ("google-photos",),
-    "com.google.android.apps.youtube.music": ("youtube-music",),
-    "com.google.android.calendar": ("google-calendar",),
-    "com.google.android.gm": ("gmail",),
-    "com.google.android.keep": ("google-keep",),
-    "com.google.android.youtube": ("youtube",),
-    "com.instagram.android": ("instagram",),
-    "com.linkedin.android": ("linkedin",),
-    "com.microsoft.office.outlook": ("microsoft-outlook", "outlook"),
-    "com.microsoft.teams": ("microsoft-teams", "teams"),
-    "com.netflix.mediaclient": ("netflix",),
-    "com.paypal.android.p2pmobile": ("paypal",),
-    "com.pinterest": ("pinterest",),
-    "com.reddit.frontpage": ("reddit",),
-    "com.snapchat.android": ("snapchat",),
-    "com.spotify.music": ("spotify",),
-    "com.twitter.android": ("x", "twitter"),
-    "com.ubercab": ("uber",),
-    "com.whatsapp": ("whatsapp",),
-    "com.zhiliaoapp.musically": ("tiktok",),
-    "org.mozilla.firefox": ("firefox",),
-    "org.telegram.messenger": ("telegram",),
-    "org.thoughtcrime.securesms": ("signal",),
-    "tv.twitch.android.app": ("twitch",),
-}
+APP_NAME_SUFFIXES = frozenset({"android", "app", "beta", "mobile", "pro"})
+PHU_NAME_SUFFIXES = frozenset({"icon", "logo"})
+AMBIGUOUS_APP_WORDS = frozenset(
+    {
+        "app",
+        "camera",
+        "gallery",
+        "home",
+        "mail",
+        "maps",
+        "messages",
+        "mobile",
+        "music",
+        "phone",
+        "photos",
+        "smart",
+        "video",
+    }
+)
+
+
+def _custom_brand_icons_loaded(hass: HomeAssistant) -> bool:
+    """Return whether PHU is configured globally in the Home Assistant frontend."""
+    manager = hass.data.get(DATA_EXTRA_MODULE_URL)
+    urls = getattr(manager, "urls", ())
+    return any(
+        isinstance(url, str)
+        and url.partition("?")[0].rstrip("/").endswith("/custom-brand-icons.js")
+        for url in urls
+    )
 
 
 def _load_custom_brand_icons(config_path: Callable[[str], str]) -> frozenset[str]:
@@ -88,43 +84,125 @@ def _load_custom_brand_icons(config_path: Callable[[str], str]) -> frozenset[str
     return frozenset()
 
 
-def _icon_name(value: str) -> str:
-    """Convert an app label into the naming style used by PHU icons."""
-    return re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-")
+def _load_mdi_icons() -> frozenset[str]:
+    """Return the bundled list of valid Material Design Icon names."""
+    try:
+        names = json.loads(MDI_ICON_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return frozenset()
+    if not isinstance(names, list):
+        return frozenset()
+    return frozenset(name for name in names if isinstance(name, str))
 
 
-def _icon_candidates(value: str) -> tuple[str, ...]:
-    """Return common PHU filename variants for an app or known alias."""
-    slug = _icon_name(value)
-    return tuple(
-        dict.fromkeys(
-            candidate
-            for candidate in (
-                value.casefold().strip(),
-                slug,
-                slug.replace("-", "_"),
-                slug.replace("-", ""),
-                f"{slug}-logo",
-                f"{slug}-icon",
-            )
-            if candidate
-        )
+def _name_tokens(value: str) -> tuple[str, ...]:
+    """Normalize an app or PHU name into comparable words."""
+    ascii_name = (
+        unicodedata.normalize("NFKD", value.casefold())
+        .encode("ascii", "ignore")
+        .decode()
     )
+    return tuple(re.findall(r"[a-z0-9]+", ascii_name))
 
 
-def _app_icon(package: str, app_name: str, brand_icons: frozenset[str]) -> str:
-    """Choose an installed brand icon for an app, with a safe MDI fallback."""
-    aliases = APP_ICON_ALIASES.get(package.casefold(), ())
-    candidates = tuple(
-        dict.fromkeys(
-            candidate
-            for value in (*aliases, app_name)
-            for candidate in _icon_candidates(value)
-        )
-    )
-    for candidate in candidates:
-        if candidate and candidate in brand_icons:
-            return f"phu:{candidate}"
+def _without_suffixes(
+    tokens: tuple[str, ...], suffixes: frozenset[str]
+) -> tuple[str, ...]:
+    """Remove generic trailing words without discarding the whole name."""
+    end = len(tokens)
+    while end > 1 and tokens[end - 1] in suffixes:
+        end -= 1
+    return tokens[:end]
+
+
+def _matching_icon(
+    app_name: str,
+    icon_names: frozenset[str],
+    icon_suffixes: frozenset[str] = frozenset(),
+    *,
+    allow_app_prefix: bool = False,
+    allow_app_suffix: bool = False,
+    allow_icon_prefix: bool = False,
+) -> str | None:
+    """Find the most confident icon match using names only."""
+    app_tokens = _name_tokens(app_name)
+    if not app_tokens:
+        return None
+    app_core = _without_suffixes(app_tokens, APP_NAME_SUFFIXES)
+    app_compact = "".join(app_tokens)
+    app_core_compact = "".join(app_core)
+    best: tuple[int, int, str] | None = None
+
+    for icon in icon_names:
+        icon_tokens = _name_tokens(icon)
+        if not icon_tokens:
+            continue
+        icon_core = _without_suffixes(icon_tokens, icon_suffixes)
+        icon_compact = "".join(icon_tokens)
+        icon_core_compact = "".join(icon_core)
+
+        if icon_tokens == app_tokens:
+            score = 500
+        elif icon_compact == app_compact:
+            score = 490
+        elif icon_core == app_core:
+            score = 450
+        elif icon_core_compact == app_core_compact:
+            score = 440
+        elif (
+            allow_app_suffix
+            and len(app_core) > len(icon_core)
+            and app_core[-len(icon_core) :] == icon_core
+            and len(icon_core_compact) >= 4
+            and icon_core[0] not in AMBIGUOUS_APP_WORDS
+        ):
+            score = 400 + len(icon_core_compact)
+        elif (
+            allow_app_prefix
+            and len(app_core) > len(icon_core)
+            and app_core[: len(icon_core)] == icon_core
+            and len(icon_core_compact) >= 5
+            and icon_core[0] not in AMBIGUOUS_APP_WORDS
+        ):
+            score = 300 + len(icon_core_compact)
+        elif (
+            allow_icon_prefix
+            and len(icon_core) > len(app_core)
+            and icon_core[-len(app_core) :] == app_core
+            and len(app_core_compact) >= 4
+            and app_core[0] not in AMBIGUOUS_APP_WORDS
+        ):
+            score = 280 + len(app_core_compact)
+        else:
+            continue
+
+        candidate = (score, -len(icon_tokens), icon)
+        if best is None or candidate > best:
+            best = candidate
+
+    return best[2] if best else None
+
+
+def _app_icon(
+    app_name: str,
+    brand_icons: frozenset[str],
+    mdi_icons: frozenset[str],
+) -> str:
+    """Choose a matching PHU icon, matching MDI icon, or generic fallback."""
+    if match := _matching_icon(
+        app_name,
+        brand_icons,
+        PHU_NAME_SUFFIXES,
+        allow_app_prefix=True,
+    ):
+        return f"phu:{match}"
+    if match := _matching_icon(
+        app_name,
+        mdi_icons,
+        allow_app_suffix=True,
+        allow_icon_prefix=True,
+    ):
+        return f"mdi:{match}"
     return APP_ICON_FALLBACK
 
 
@@ -162,9 +240,14 @@ async def async_setup_entry(
     runtime: LifeDashboardRuntime = hass.data[DOMAIN][entry.entry_id]
     health_enabled = bool(entry.data.get(CONF_HEALTH_ENABLED, True))
     screentime_enabled = bool(entry.data.get(CONF_SCREENTIME_ENABLED, True))
-    brand_icons = await hass.async_add_executor_job(
-        _load_custom_brand_icons, hass.config.path
+    brand_icons = (
+        await hass.async_add_executor_job(
+            _load_custom_brand_icons, hass.config.path
+        )
+        if _custom_brand_icons_loaded(hass)
+        else frozenset()
     )
+    mdi_icons = await hass.async_add_executor_job(_load_mdi_icons)
 
     entities: list[SensorEntity] = [
         LifeDashboardSensor(entry, runtime, definition)
@@ -182,7 +265,9 @@ async def async_setup_entry(
     if screentime_enabled:
         for package in sorted(runtime.known_apps):
             entities.append(
-                LifeDashboardAppSensor(entry, runtime, package, brand_icons)
+                LifeDashboardAppSensor(
+                    entry, runtime, package, brand_icons, mdi_icons
+                )
             )
             added_apps.add(package)
 
@@ -194,7 +279,11 @@ async def async_setup_entry(
             return
         added_apps.add(package)
         async_add_entities(
-            [LifeDashboardAppSensor(entry, runtime, package, brand_icons)]
+            [
+                LifeDashboardAppSensor(
+                    entry, runtime, package, brand_icons, mdi_icons
+                )
+            ]
         )
 
     if screentime_enabled:
@@ -307,15 +396,16 @@ class LifeDashboardAppSensor(SensorEntity):
         runtime: LifeDashboardRuntime,
         package: str,
         brand_icons: frozenset[str] = frozenset(),
+        mdi_icons: frozenset[str] = frozenset(),
     ) -> None:
         self._entry = entry
         self._runtime = runtime
         self._package = package
         self._attr_unique_id = f"{entry.entry_id}:screentime:app:{package}"
         self._attr_icon = _app_icon(
-            package,
             runtime.known_apps.get(package, runtime.get_app_display_name(package)),
             brand_icons,
+            mdi_icons,
         )
 
     @property

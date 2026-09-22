@@ -22,7 +22,16 @@ of them from their entity settings when you need them.
 
 [Custom Brand Icons](https://github.com/elax46/custom-brand-icons) is
 recommended for recognizable icons on individual app ScreenTime sensors. When
-it is not installed or an app has no matching icon, a standard app icon is used.
+an app name has no matching PHU icon, the integration tries a matching Material
+Design icon. If neither catalog has a match, `mdi:application` is used.
+For PHU icons to work throughout Home Assistant, add its module globally and
+restart Home Assistant:
+
+```yaml
+frontend:
+  extra_module_url:
+    - /local/community/custom-brand-icons/custom-brand-icons.js
+```
 
 ## Statistics graphs
 
