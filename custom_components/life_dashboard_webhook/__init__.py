@@ -18,7 +18,6 @@ from homeassistant.helpers import device_registry as dr
 from .const import (
     CONF_DEVICE_NAME,
     CONF_HMAC_SECRET,
-    CONF_STORE_DETAILED_HISTORY,
     CONF_WEBHOOK_ID,
     DEVICE_HEALTH,
     DEVICE_SCREEN_TIME,
@@ -32,6 +31,7 @@ from .const import (
 from .runtime import LifeDashboardRuntime
 
 _LOGGER = logging.getLogger(__name__)
+_LEGACY_HISTORY_OPTION = "store_detailed_history"
 
 
 def _device_identifier(entry_id: str, group: str) -> tuple[str, str]:
@@ -46,6 +46,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = runtime
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+
+    if _LEGACY_HISTORY_OPTION in entry.options:
+        options = dict(entry.options)
+        options.pop(_LEGACY_HISTORY_OPTION)
+        hass.config_entries.async_update_entry(entry, options=options)
 
     webhook.async_register(
         hass,
@@ -110,13 +115,7 @@ def _build_webhook_handler(entry: ConfigEntry):
 
         runtime: LifeDashboardRuntime = hass.data[DOMAIN][entry.entry_id]
         try:
-            await runtime.async_process_payload(
-                payload,
-                store_detailed_history=entry.options.get(
-                    CONF_STORE_DETAILED_HISTORY, True
-                ),
-                device_name=entry.data[CONF_DEVICE_NAME],
-            )
+            await runtime.async_process_payload(payload)
             _update_device_registry(hass, entry, payload)
         except Exception:  # Return 5xx so Life Dashboard will retry transient failures.
             _LOGGER.exception(

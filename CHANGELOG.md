@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.7
+
+- Activity sensors now work directly in Statistics graph cards with hourly or daily periods.
+- Stopped creating separate detailed-history statistics and removed the setting.
+
 ## 0.2.6
 
 - Fixed detailed history for phones with newer Home Assistant identifiers.

@@ -106,6 +106,27 @@ def _device_identifier(entry_id: str, group: str) -> tuple[str, str]:
     return (DOMAIN, f"{entry_id}:{group}")
 
 
+def _source_reset_time(
+    data: dict[str, Any] | None, keys: tuple[str, ...]
+) -> datetime | None:
+    """Parse a reset timestamp from normalized source attributes."""
+    attrs = data.get("attributes") if data else None
+    if not isinstance(attrs, dict):
+        return None
+    for key in keys:
+        value = attrs.get(key)
+        if not isinstance(value, str):
+            continue
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            continue
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=dt_util.DEFAULT_TIME_ZONE)
+        return parsed
+    return None
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -204,6 +225,14 @@ class LifeDashboardSensor(SensorEntity):
         return value
 
     @property
+    def last_reset(self) -> datetime | None:
+        """Return the source-defined reset time for accumulated counters."""
+        return _source_reset_time(
+            self._runtime.get_state(self._definition.key),
+            self._definition.reset_keys,
+        )
+
+    @property
     def extra_state_attributes(self) -> dict[str, Any] | None:
         """Return compact source metadata."""
         data = self._runtime.get_state(self._definition.key)
@@ -268,6 +297,13 @@ class LifeDashboardAppSensor(SensorEntity):
     def native_value(self) -> Any:
         data = self._runtime.get_state(f"screen_app::{self._package}")
         return data.get("value") if data else None
+
+    @property
+    def last_reset(self) -> datetime | None:
+        """Return midnight on the source day as the app counter reset."""
+        return _source_reset_time(
+            self._runtime.get_state(f"screen_app::{self._package}"), ("date",)
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any] | None:

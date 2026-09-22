@@ -19,6 +19,19 @@ Only the main screen-time summaries are enabled by default. Individual app
 sensors and sensors without data stay disabled until you enable the ones you
 care about from their entity settings.
 
+## Statistics graphs
+
+Add the existing **Steps today**, **Distance today**, calorie, **Screen time
+today**, or app screen-time entity directly to a Statistics graph card. Choose
+**Change** as the statistic, then switch the card period between **Hour** and
+**Day**. No additional sensor or statistic ID is needed.
+
+For values such as heart rate, weight, or temperature, use **Mean**, **Minimum**,
+or **Maximum** instead.
+
+Hourly bars reflect when the phone sends updates to Home Assistant. More
+frequent phone syncs give more accurate hourly distribution.
+
 ## Install with HACS
 
 [![Open Life Dashboard Webhook in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=gabbro246&repository=life_dashboard_webhook&category=integration)

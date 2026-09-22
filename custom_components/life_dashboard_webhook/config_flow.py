@@ -14,7 +14,6 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_DEVICE_NAME,
     CONF_HMAC_SECRET,
-    CONF_STORE_DETAILED_HISTORY,
     CONF_WEBHOOK_ID,
     DOMAIN,
 )
@@ -100,19 +99,14 @@ class LifeDashboardWebhookOptionsFlow(OptionsFlow):
         """Show and edit entry options."""
         current_name = self._entry.data[CONF_DEVICE_NAME]
         current_secret = self._entry.data.get(CONF_HMAC_SECRET, "")
-        current_history = self._entry.options.get(CONF_STORE_DETAILED_HISTORY, True)
         if user_input is not None:
             name = str(user_input[CONF_DEVICE_NAME]).strip()
             secret = str(user_input.get(CONF_HMAC_SECRET, "")).strip()
             new_data = dict(self._entry.data)
             new_data[CONF_DEVICE_NAME] = name
             new_data[CONF_HMAC_SECRET] = secret
-            new_options = dict(self._entry.options)
-            new_options[CONF_STORE_DETAILED_HISTORY] = bool(
-                user_input.get(CONF_STORE_DETAILED_HISTORY, True)
-            )
             self.hass.config_entries.async_update_entry(
-                self._entry, data=new_data, options=new_options, title=name
+                self._entry, data=new_data, title=name
             )
             self.hass.config_entries.async_schedule_reload(self._entry.entry_id)
             return self.async_create_entry(title="", data={})
@@ -124,9 +118,6 @@ class LifeDashboardWebhookOptionsFlow(OptionsFlow):
                 vol.Optional(CONF_HMAC_SECRET, default=current_secret): selector.TextSelector(
                     selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
                 ),
-                vol.Optional(
-                    CONF_STORE_DETAILED_HISTORY, default=current_history
-                ): selector.BooleanSelector(),
             }
         )
         return self.async_show_form(

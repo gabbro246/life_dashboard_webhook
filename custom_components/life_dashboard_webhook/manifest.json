@@ -3,11 +3,11 @@
   "name": "Life Dashboard Webhook",
   "codeowners": ["@gabbro246"],
   "config_flow": true,
-  "dependencies": ["recorder", "webhook"],
+  "dependencies": ["webhook"],
   "documentation": "https://github.com/gabbro246/life_dashboard_webhook",
   "integration_type": "hub",
   "iot_class": "local_push",
   "issue_tracker": "https://github.com/gabbro246/life_dashboard_webhook/issues",
   "requirements": [],
-  "version": "0.2.6"
+  "version": "0.2.7"
 }

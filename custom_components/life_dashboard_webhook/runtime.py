@@ -11,7 +11,6 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
 
 from .const import STORAGE_KEY_PREFIX, STORAGE_VERSION
-from .history import async_import_history
 from .parser import normalize_health, normalize_screen_time, resolve_app_names
 
 _LOGGER = logging.getLogger(__name__)
@@ -155,13 +154,7 @@ class LifeDashboardRuntime:
 
         return _remove
 
-    async def async_process_payload(
-        self,
-        payload: dict[str, Any],
-        *,
-        store_detailed_history: bool = True,
-        device_name: str = "Life Dashboard",
-    ) -> str:
+    async def async_process_payload(self, payload: dict[str, Any]) -> str:
         """Normalize one webhook payload and notify entities."""
         source = payload.get("source")
         newly_discovered: dict[str, str] = {}
@@ -179,9 +172,6 @@ class LifeDashboardRuntime:
         else:
             _LOGGER.debug("Ignoring unsupported Life Dashboard source: %s", source)
             return "ignored"
-
-        if store_detailed_history:
-            await async_import_history(self.hass, self.entry_id, payload, device_name)
 
         for key, incoming in updates.items():
             if _prefer_incoming(self.states.get(key), incoming):

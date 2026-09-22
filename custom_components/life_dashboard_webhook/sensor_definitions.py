@@ -25,6 +25,7 @@ class SensorDefinition:
     entity_category: EntityCategory | None = None
     suggested_display_precision: int | None = None
     enabled_default: bool | None = None
+    reset_keys: tuple[str, ...] = ()
 
 
 def _health(
@@ -37,6 +38,7 @@ def _health(
     timestamp: bool = False,
     entity_category: EntityCategory | None = None,
     precision: int | None = None,
+    reset_keys: tuple[str, ...] = (),
 ) -> SensorDefinition:
     return SensorDefinition(
         key,
@@ -48,6 +50,8 @@ def _health(
         timestamp,
         entity_category,
         precision,
+        None,
+        reset_keys,
     )
 
 
@@ -61,6 +65,7 @@ def _screen(
     timestamp: bool = False,
     entity_category: EntityCategory | None = None,
     enabled_default: bool | None = None,
+    reset_keys: tuple[str, ...] = (),
 ) -> SensorDefinition:
     return SensorDefinition(
         key,
@@ -73,18 +78,90 @@ def _screen(
         entity_category,
         None,
         enabled_default,
+        reset_keys,
     )
 
 
+_DAILY_RESET_KEYS = ("date",)
+_INTERVAL_RESET_KEYS = (
+    "bucket_start",
+    "start_time",
+    "time",
+    "end_time",
+    "bucket_end",
+)
+
 HEALTH_SENSOR_DEFINITIONS: list[SensorDefinition] = [
-    _health("steps_today", "Steps today", "steps", "mdi:walk", SensorStateClass.TOTAL),
-    _health("steps_latest_interval", "Steps latest interval", "steps", "mdi:walk", SensorStateClass.TOTAL),
-    _health("distance_today", "Distance today", "m", "mdi:map-marker-distance", SensorStateClass.TOTAL, precision=1),
-    _health("distance_latest_interval", "Distance latest interval", "m", "mdi:map-marker-distance", SensorStateClass.TOTAL, precision=1),
-    _health("active_calories_today", "Active calories today", "kcal", "mdi:fire", SensorStateClass.TOTAL, precision=1),
-    _health("active_calories_latest_interval", "Active calories latest interval", "kcal", "mdi:fire", SensorStateClass.TOTAL, precision=1),
-    _health("total_calories_today", "Total calories today", "kcal", "mdi:fire", SensorStateClass.TOTAL, precision=1),
-    _health("total_calories_latest_interval", "Total calories latest interval", "kcal", "mdi:fire", SensorStateClass.TOTAL, precision=1),
+    _health(
+        "steps_today",
+        "Steps today",
+        "steps",
+        "mdi:walk",
+        SensorStateClass.TOTAL,
+        reset_keys=_DAILY_RESET_KEYS,
+    ),
+    _health(
+        "steps_latest_interval",
+        "Steps latest interval",
+        "steps",
+        "mdi:walk",
+        SensorStateClass.TOTAL,
+        reset_keys=_INTERVAL_RESET_KEYS,
+    ),
+    _health(
+        "distance_today",
+        "Distance today",
+        "m",
+        "mdi:map-marker-distance",
+        SensorStateClass.TOTAL,
+        precision=1,
+        reset_keys=_DAILY_RESET_KEYS,
+    ),
+    _health(
+        "distance_latest_interval",
+        "Distance latest interval",
+        "m",
+        "mdi:map-marker-distance",
+        SensorStateClass.TOTAL,
+        precision=1,
+        reset_keys=_INTERVAL_RESET_KEYS,
+    ),
+    _health(
+        "active_calories_today",
+        "Active calories today",
+        "kcal",
+        "mdi:fire",
+        SensorStateClass.TOTAL,
+        precision=1,
+        reset_keys=_DAILY_RESET_KEYS,
+    ),
+    _health(
+        "active_calories_latest_interval",
+        "Active calories latest interval",
+        "kcal",
+        "mdi:fire",
+        SensorStateClass.TOTAL,
+        precision=1,
+        reset_keys=_INTERVAL_RESET_KEYS,
+    ),
+    _health(
+        "total_calories_today",
+        "Total calories today",
+        "kcal",
+        "mdi:fire",
+        SensorStateClass.TOTAL,
+        precision=1,
+        reset_keys=_DAILY_RESET_KEYS,
+    ),
+    _health(
+        "total_calories_latest_interval",
+        "Total calories latest interval",
+        "kcal",
+        "mdi:fire",
+        SensorStateClass.TOTAL,
+        precision=1,
+        reset_keys=_INTERVAL_RESET_KEYS,
+    ),
     _health("weight", "Weight", "kg", "mdi:weight-kilogram", precision=2),
     _health("height", "Height", "m", "mdi:human-male-height", precision=3),
     _health("body_temperature", "Body temperature", "°C", "mdi:thermometer", precision=2),
@@ -234,6 +311,7 @@ SCREEN_SENSOR_DEFINITIONS: list[SensorDefinition] = [
         "min",
         "mdi:calendar-today",
         SensorStateClass.TOTAL,
+        reset_keys=_DAILY_RESET_KEYS,
         enabled_default=True,
     ),
     _screen(
