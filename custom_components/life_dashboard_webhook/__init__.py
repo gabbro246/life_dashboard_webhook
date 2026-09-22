@@ -222,8 +222,8 @@ def _update_device_registry(
         registry.async_get_or_create(
             config_entry_id=entry.entry_id,
             identifiers={_device_identifier(entry.entry_id, DEVICE_SCREEN_TIME)},
-            name=f"{phone_name} Screentime",
+            name=f"{phone_name} ScreenTime",
             manufacturer=MANUFACTURER,
-            model=payload.get("device") or "Android Screen Time",
+            model=payload.get("device") or "Android ScreenTime",
             sw_version=app_version,
         )

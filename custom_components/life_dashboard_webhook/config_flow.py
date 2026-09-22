@@ -188,5 +188,5 @@ def _setup_schema(values: dict[str, Any] | None = None) -> vol.Schema:
 def _data_source_label(health_enabled: bool, screentime_enabled: bool) -> str:
     """Return a readable summary of the selected data sources."""
     if health_enabled and screentime_enabled:
-        return "Health and Screen time"
-    return "Health" if health_enabled else "Screen time"
+        return "Health and ScreenTime"
+    return "Health" if health_enabled else "ScreenTime"

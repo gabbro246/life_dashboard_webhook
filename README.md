@@ -4,22 +4,25 @@
   <img src="custom_components/life_dashboard_webhook/brand/icon.png" alt="Life Dashboard Webhook icon" width="160">
 </p>
 
-Life Dashboard Webhook brings health and screen-time data from
+Life Dashboard Webhook brings health and ScreenTime data from
 [Life Dashboard Companion](https://github.com/owen282000/life-dashboard-companion-app)
 into Home Assistant.
 
 ## What it does
 
-The integration creates separate Health and Screen Time devices for each phone.
-You choose Health, Screen Time, or both when connecting a phone and can change
-that selection later. Their sensors include daily activity, body measurements,
-sleep,
+The integration creates separate Health and ScreenTime devices for each
+phone. Their sensors include daily activity, body measurements, sleep,
 exercise, nutrition, phone usage, and individual app usage when that data is
 available.
 
-Only the main screen-time summaries are enabled by default. Individual app
-sensors and sensors without data stay disabled until you enable the ones you
-care about from their entity settings.
+Sensors are enabled by default only when their data has been received.
+Latest-interval sensors, yesterday and seven-day ScreenTime summaries, and
+individual app sensors are opt-in so the device pages stay focused. Enable any
+of them from their entity settings when you need them.
+
+[Custom Brand Icons](https://github.com/elax46/custom-brand-icons) is
+recommended for recognizable icons on individual app ScreenTime sensors. When
+it is not installed or an app has no matching icon, a standard app icon is used.
 
 ## Statistics graphs
 
@@ -52,16 +55,16 @@ your Home Assistant, add
 
 ## Connect a phone
 
-When adding the integration, give the phone a clear name and choose Health,
-Screen Time, or both. Home Assistant then shows a dedicated webhook URL. Use that
-same URL for the selected webhooks in Life Dashboard Companion.
+When adding the integration, choose Health, ScreenTime, or both. Use the
+provided webhook URL for the selected features in Life Dashboard Companion.
 
 You can optionally add a signing secret to verify that incoming data came from
 your phone. Enter the same secret in Home Assistant and Life Dashboard
 Companion.
 
-Add the integration again for each additional phone. To change a phone name, selected data types, or signing secret later, open **Settings → Devices & services → Life Dashboard
-Webhook**, select the phone, and choose **Configure**.
+Add the integration again for each additional phone. To change its settings,
+select the phone under **Settings → Devices & services → Life Dashboard Webhook**
+and choose **Configure**.
 
 ## Manual installation
 

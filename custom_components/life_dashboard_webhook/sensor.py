@@ -36,7 +36,8 @@ CUSTOM_BRAND_ICON_PATTERN = re.compile(r'^\s*"([^"]+)":\[', re.MULTILINE)
 
 # Android package names whose user-facing names do not always match their PHU icon.
 APP_ICON_ALIASES: dict[str, tuple[str, ...]] = {
-    "com.amazon.mshop.android.shopping": ("amazon",),
+    "com.amazon.mshop.android.shopping": ("amazon-logo",),
+    "com.brave.browser": ("brave",),
     "com.android.chrome": ("google-chrome", "chrome"),
     "com.discord": ("discord",),
     "com.duolingo": ("duolingo",),
@@ -66,7 +67,9 @@ APP_ICON_ALIASES: dict[str, tuple[str, ...]] = {
     "com.ubercab": ("uber",),
     "com.whatsapp": ("whatsapp",),
     "com.zhiliaoapp.musically": ("tiktok",),
+    "org.mozilla.firefox": ("firefox",),
     "org.telegram.messenger": ("telegram",),
+    "org.thoughtcrime.securesms": ("signal",),
     "tv.twitch.android.app": ("twitch",),
 }
 
@@ -90,13 +93,34 @@ def _icon_name(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", value.casefold()).strip("-")
 
 
+def _icon_candidates(value: str) -> tuple[str, ...]:
+    """Return common PHU filename variants for an app or known alias."""
+    slug = _icon_name(value)
+    return tuple(
+        dict.fromkeys(
+            candidate
+            for candidate in (
+                value.casefold().strip(),
+                slug,
+                slug.replace("-", "_"),
+                slug.replace("-", ""),
+                f"{slug}-logo",
+                f"{slug}-icon",
+            )
+            if candidate
+        )
+    )
+
+
 def _app_icon(package: str, app_name: str, brand_icons: frozenset[str]) -> str:
     """Choose an installed brand icon for an app, with a safe MDI fallback."""
-    app_slug = _icon_name(app_name)
-    candidates = (
-        *APP_ICON_ALIASES.get(package.casefold(), ()),
-        app_slug,
-        app_slug.replace("-", ""),
+    aliases = APP_ICON_ALIASES.get(package.casefold(), ())
+    candidates = tuple(
+        dict.fromkeys(
+            candidate
+            for value in (*aliases, app_name)
+            for candidate in _icon_candidates(value)
+        )
     )
     for candidate in candidates:
         if candidate and candidate in brand_icons:
@@ -221,8 +245,8 @@ class LifeDashboardSensor(SensorEntity):
             name = f"{phone_name} Health"
             model = "Health Connect"
         else:
-            name = f"{phone_name} Screentime"
-            model = "Android Screen Time"
+            name = f"{phone_name} ScreenTime"
+            model = "Android ScreenTime"
         return DeviceInfo(
             identifiers={_device_identifier(self._entry.entry_id, self._definition.device_group)},
             name=name,
@@ -306,9 +330,9 @@ class LifeDashboardAppSensor(SensorEntity):
         phone_name = self._entry.data[CONF_DEVICE_NAME]
         return DeviceInfo(
             identifiers={_device_identifier(self._entry.entry_id, DEVICE_SCREEN_TIME)},
-            name=f"{phone_name} Screentime",
+            name=f"{phone_name} ScreenTime",
             manufacturer=MANUFACTURER,
-            model="Android Screen Time",
+            model="Android ScreenTime",
         )
 
     @property

@@ -4,11 +4,11 @@
     "step": {
       "user": {
         "title": "Add an Android device",
-        "description": "This creates one dedicated webhook for this phone. Choose Health, Screen time, or both. Add the integration again for each additional phone.",
+        "description": "This creates one dedicated webhook for this phone. Choose Health, ScreenTime, or both. Add the integration again for each additional phone.",
         "data": {
           "device_name": "Phone name",
           "health_enabled": "Health data",
-          "screentime_enabled": "Screen time data",
+          "screentime_enabled": "ScreenTime data",
           "hmac_secret": "HMAC signing secret (optional)"
         }
       },
@@ -18,7 +18,7 @@
       }
     },
     "error": {
-      "select_data_source": "Select Health, Screen time, or both."
+      "select_data_source": "Select Health, ScreenTime, or both."
     },
     "abort": {
       "missing_setup_data": "The setup data was lost. Start the integration setup again."
@@ -32,13 +32,13 @@
         "data": {
           "device_name": "Phone name",
           "health_enabled": "Health data",
-          "screentime_enabled": "Screen time data",
+          "screentime_enabled": "ScreenTime data",
           "hmac_secret": "HMAC signing secret (optional)"
         }
       }
     },
     "error": {
-      "select_data_source": "Select Health, Screen time, or both."
+      "select_data_source": "Select Health, ScreenTime, or both."
     }
   }
 }

@@ -1,9 +1,11 @@
 # Changelog
 
-## 0.3.0
+## 0.3.1
 
-- Added a choice of Health, Screen Time, or both for each phone, which can be changed later.
+- Added a choice of Health, ScreenTime, or both for each phone, which can be changed later.
 - Simplified entity names, such as `phone_screentime_today` and `phone_health_steps_today`.
+- Made the default entity selection more consistent and reduced unused clutter.
+- Improved app icons and made app-version names clearer.
 
 ## 0.2.7
 

@@ -38,6 +38,7 @@ def _health(
     timestamp: bool = False,
     entity_category: EntityCategory | None = None,
     precision: int | None = None,
+    enabled_default: bool | None = None,
     reset_keys: tuple[str, ...] = (),
 ) -> SensorDefinition:
     return SensorDefinition(
@@ -50,7 +51,7 @@ def _health(
         timestamp,
         entity_category,
         precision,
-        None,
+        enabled_default,
         reset_keys,
     )
 
@@ -106,6 +107,7 @@ HEALTH_SENSOR_DEFINITIONS: list[SensorDefinition] = [
         "steps",
         "mdi:walk",
         SensorStateClass.TOTAL,
+        enabled_default=False,
         reset_keys=_INTERVAL_RESET_KEYS,
     ),
     _health(
@@ -124,6 +126,7 @@ HEALTH_SENSOR_DEFINITIONS: list[SensorDefinition] = [
         "mdi:map-marker-distance",
         SensorStateClass.TOTAL,
         precision=1,
+        enabled_default=False,
         reset_keys=_INTERVAL_RESET_KEYS,
     ),
     _health(
@@ -142,6 +145,7 @@ HEALTH_SENSOR_DEFINITIONS: list[SensorDefinition] = [
         "mdi:fire",
         SensorStateClass.TOTAL,
         precision=1,
+        enabled_default=False,
         reset_keys=_INTERVAL_RESET_KEYS,
     ),
     _health(
@@ -160,6 +164,7 @@ HEALTH_SENSOR_DEFINITIONS: list[SensorDefinition] = [
         "mdi:fire",
         SensorStateClass.TOTAL,
         precision=1,
+        enabled_default=False,
         reset_keys=_INTERVAL_RESET_KEYS,
     ),
     _health("weight", "Weight", "kg", "mdi:weight-kilogram", precision=2),
@@ -229,7 +234,7 @@ HEALTH_SENSOR_DEFINITIONS: list[SensorDefinition] = [
     ),
     _health(
         "health_app_version",
-        "App version",
+        "Life Dashboard Companion version",
         None,
         "mdi:application-cog",
         None,
@@ -312,7 +317,6 @@ SCREEN_SENSOR_DEFINITIONS: list[SensorDefinition] = [
         "mdi:calendar-today",
         SensorStateClass.TOTAL,
         reset_keys=_DAILY_RESET_KEYS,
-        enabled_default=True,
     ),
     _screen(
         "screen_time_yesterday",
@@ -320,7 +324,7 @@ SCREEN_SENSOR_DEFINITIONS: list[SensorDefinition] = [
         "min",
         "mdi:calendar-arrow-left",
         SensorStateClass.TOTAL,
-        enabled_default=True,
+        enabled_default=False,
     ),
     _screen(
         "screen_time_7d",
@@ -328,7 +332,7 @@ SCREEN_SENSOR_DEFINITIONS: list[SensorDefinition] = [
         "min",
         "mdi:calendar-week",
         SensorStateClass.TOTAL,
-        enabled_default=True,
+        enabled_default=False,
     ),
     _screen(
         "screen_top_app",
@@ -336,7 +340,6 @@ SCREEN_SENSOR_DEFINITIONS: list[SensorDefinition] = [
         None,
         "mdi:timer-alert-outline",
         None,
-        enabled_default=True,
     ),
     _screen(
         "screen_last_sync",
@@ -346,16 +349,14 @@ SCREEN_SENSOR_DEFINITIONS: list[SensorDefinition] = [
         None,
         timestamp=True,
         entity_category=EntityCategory.DIAGNOSTIC,
-        enabled_default=True,
     ),
     _screen(
         "screen_app_version",
-        "App version",
+        "Life Dashboard Companion version",
         None,
         "mdi:application-cog",
         None,
         entity_category=EntityCategory.DIAGNOSTIC,
-        enabled_default=False,
     ),
 ]
 
