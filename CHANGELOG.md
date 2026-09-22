@@ -1,6 +1,11 @@
 # Changelog
 
+## 0.2.5
+
+- Fixed detailed history not appearing for some phones.
+
 ## 0.2.4
+
 - Added optional detailed history for accurate health and screen-time graphs, even after a delayed phone sync.
 - Added clearer screen-time and app icons, with supported brand icons used when available.
 

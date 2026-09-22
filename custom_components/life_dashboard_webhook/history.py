@@ -301,7 +301,7 @@ def _import_points(hass: HomeAssistant, entry_id: str, points: list[_HistoryPoin
             has_sum=False,
             name=first.name,
             source=DOMAIN,
-            statistic_id=f"{DOMAIN}:{entry_id}_{key}",
+            statistic_id=f"{DOMAIN}:entry_{entry_id}_{key}",
             unit_class=None,
             unit_of_measurement=first.unit,
         )
